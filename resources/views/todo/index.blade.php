@@ -13,7 +13,6 @@
                 </div>
                 @endif
                 <a href="{{ url('todos/create') }}" class="btn btn-success mb-3">登録</a>
-                <p>ここを更新したよ！</p>
                 <table class="table">
                     <thead>
                         <tr>
