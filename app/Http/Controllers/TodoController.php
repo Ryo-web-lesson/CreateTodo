@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 use App\Models\Todo;
 use Illuminate\Http\Request;
+use App\Models\Folder;
+use App\Models\Task;
+use App\Http\Requests\CreateTask;
+use App\Http\Requests\EditTask;
+use Illuminate\Support\Facades\Auth;
 
 class TodoController extends Controller
 {
@@ -11,101 +16,73 @@ class TodoController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(int $id)
     {
-        $todos = Todo::all();
 
-        return view('todo.index', compact('todos'));
+    // ★ ユーザーのフォルダを取得する
+    $folders = Auth::user()->folders()->get();
+     // すべてのフォルダを取得する
+     /* $folders = Folder::all(); */
+
+     // 選ばれたフォルダを取得する
+     $current_folder = Folder::find($id);
+ 
+     // 選ばれたフォルダに紐づくタスクを取得する
+     $tasks = $current_folder->tasks()->get(); // ★
+ 
+     return view('tasks/index', [
+         'folders' => $folders,
+         'current_folder_id' => $current_folder->id,
+         'tasks' => $tasks,
+     ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        return view('todo.create');
-    }
+    public function showCreateForm(int $id)
+{
+    return view('tasks/create', [
+        'folder_id' => $id
+    ]);
+}
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        $todo = new Todo();
-        $todo->title = $request->input('title');
-        $todo->save();
+public function create(int $id, CreateTask $request)
+{
+    $current_folder = Folder::find($id);
 
-        return redirect('todos')->with(
-            'status',
-            $todo->title . 'を登録しました!'
-        );
-    }
+    $task = new Task();
+    $task->title = $request->title;
+    $task->due_date = $request->due_date;
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        $todo = Todo::find($id);
+    $current_folder->tasks()->save($task);
 
-        return view('todo.show', compact('todo'));
-    }
+    return redirect()->route('tasks.index', [
+        'id' => $current_folder->id,
+    ]);
+}
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        $todo = Todo::find($id);
+public function showEditForm(int $id, int $task_id)
+{
+    $task = Task::find($task_id);
 
-        return view('todo.edit', compact('todo'));
-    }
+    return view('tasks/edit', [
+        'task' => $task,
+    ]);
+}
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        $todo = Todo::find($id);
+public function edit(int $id, int $task_id, EditTask $request)
+{
+    // 1
+    $task = Task::find($task_id);
 
-        $todo->title = $request->input('title');
-        $todo->save();
-    
-        return redirect('todos')->with(
-            'status',
-            $todo->title . 'を更新しました!'
-        );
-    }
+    // 2
+    $task->title = $request->title;
+    $task->status = $request->status;
+    $task->due_date = $request->due_date;
+    $task->save();
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        $todo = Todo::find($id);
-        $todo->delete();
-    
-        return redirect('todos')->with(
-            'status',
-            $todo->title . 'を削除しました!'
-        );
-    }
+    // 3
+    return redirect()->route('tasks.index', [
+        'id' => $task->folder_id,
+    ]);
+}
+   
 }
